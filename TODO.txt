@@ -1,0 +1,18 @@
+https://github.com/seancmonahan/klipper/blob/1636a9759bc2d5f162312ac8bf5823e95e0ad053/klippy/klippy.py#L251
+
+event_handlers "klippy:shutdown" register an extra to tell tasmota device to power off (in case of electrical fire or something similar)
+
+    def invoke_shutdown(self, msg):
+        if self.in_shutdown_state:
+            return
+        logging.error("Transition to shutdown state: %s", msg)
+        self.in_shutdown_state = True
+        self._set_state("%s%s" % (msg, message_shutdown))
+        for cb in self.event_handlers.get("klippy:shutdown", []):
+            try:
+                cb()
+            except:
+                logging.exception("Exception during shutdown handler")
+        logging.info("Reactor garbage collection: %s",
+                     self.reactor.get_gc_stats())
+
