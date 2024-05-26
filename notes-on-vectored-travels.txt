@@ -1,0 +1,10 @@
+first pass
+probably would be good to make sure what I'm envisioning actually improves things
+
+prototype might be easiest as a standalone gcode transformation script
+configure slicer in such a way (verbose g-code, specific settings on retractions, moves, wipes, etc.)
+that the transformation script can figure out where to transform
+
+if I have PA dialed in, what happens if I change a travel into a vectored travel
+with a terminal 'wiped' de-retraction that ends exactly as it reaches the start of the next
+extrusion move, where the deretraction normally would occur?
