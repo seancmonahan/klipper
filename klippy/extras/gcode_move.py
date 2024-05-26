@@ -110,6 +110,56 @@ class GCodeMove:
         if self.is_printer_ready:
             self.last_position = self.position_with_transform()
     # G-Code movement commands
+    def cmd_K0(self, gcmd):
+        # magic will involve calculating the next print move's velocity vector, reversing that to find a point behind there to start the approach
+        # this will only really work correctly/helpfully if *wiped firmware (de)retractions* are allowed (or your PA is so perfectly dialed in you don't use retractions)
+        # so I maybe should pick one or the other to implement. Generalized wiped retractions are actually probably simpler, in that you
+        # could have the slicer tell you where to go while retracting. Then we could harness that to implement the 'wiped-deretraction' at the end of this
+        # vectored move.
+        # maybe this will work as some sort of cursed, vectored-move-with-wiped-firmware-deretraction haha
+
+        # Move
+        params = gcmd.get_command_parameters()
+        try:
+            if 'E' in params:
+                logging.debug("K0 with extrusion: forwarded to G1. Extrusions are invalid in K0 (vectored move) '%s'" % (gcmd.get_commandline(),)
+                return self.cmd_G1(gcmd)
+                # raise gcmd.error("Extrusions are invalid in K0 (vectored move) '%s'" % (gcmd.get_commandline(),))
+
+            logging.debug('K0 vectored move magic here. Look ahead (somehow?) to calculate the smoothest '
+                'travel so the final leg is matched velocity (i.e. speed and direction) with next move, presumably a G1 with extrusion')
+            logging.debug('K0 magic not implemented yet lols. Handing back off to G1')
+            logging.debug('K0 magic will instead require digging in toolhead.move, or possibly wherever set_move_transform is called elsewhere, especially resonance compensation')
+            return self.cmd_G1(gcmd)
+
+            for pos, axis in enumerate('XYZ'):
+                if axis in params:
+                    v = float(params[axis])
+                    if not self.absolute_coord:
+                        # value relative to position of last move
+                        self.last_position[pos] += v
+                    else:
+                        # value relative to base coordinate position
+                        self.last_position[pos] = v + self.base_position[pos]
+            if 'E' in params:
+                v = float(params['E']) * self.extrude_factor
+                if not self.absolute_coord or not self.absolute_extrude:
+                    # value relative to position of last move
+                    self.last_position[3] += v
+                else:
+                    # value relative to base coordinate position
+                    self.last_position[3] = v + self.base_position[3]
+            if 'F' in params:
+                gcode_speed = float(params['F'])
+                if gcode_speed <= 0.:
+                    raise gcmd.error("Invalid speed in '%s'"
+                                     % (gcmd.get_commandline(),))
+                self.speed = gcode_speed * self.speed_factor
+        except ValueError as e:
+            raise gcmd.error("Unable to parse move '%s'"
+                             % (gcmd.get_commandline(),))
+        self.move_with_transform(self.last_position, self.speed)
+
     def cmd_G1(self, gcmd):
         # Move
         params = gcmd.get_command_parameters()
